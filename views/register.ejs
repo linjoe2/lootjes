@@ -6,6 +6,17 @@
 <body>
 <%- include menu.ejs %>
 
+<form action="/register" method="post">
+	<p>username:</p>
+	<input type='text' name='username'></input>
+	<p>password:</p>
+	<input type='password' name='password'></input>
+	<p>group</p>
+	<input type='text' name='group'></input>
+	<input type='submit' name='submit' value='submit'></input>
+</form>
+
+
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/scripts/main.js"></script>
 
