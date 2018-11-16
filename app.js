@@ -3,6 +3,15 @@ const express = require('express')
 const app = express()
 
 
+// -------- sessions settings -------- //
+const session = require('express-session');
+
+app.use(session({
+	secret: 'oh wow very secret much security',
+	resave: true,
+	saveUninitialized: false
+}));
+
 // -------- express settings -------- //
 const port = 3000
 app.set('view engine', 'ejs')
@@ -39,7 +48,7 @@ Users.belongsTo(Groups)
 
 // makes it recreate the tables every restart
 
-sequelize.sync({force: true});
+sequelize.sync({force: false});
 
 
 // ---------- pages ---------- //
@@ -49,7 +58,11 @@ sequelize.sync({force: true});
 // shows: nice landing page where you can register
 
 app.get('/', (req, res) => {
- res.render('index',{})      
+ 	res.render('index', {
+		message: req.query.message,
+		user: req.session.user
+	});
+     
 })
 
 
@@ -60,23 +73,26 @@ app.get('/register', (req, res) => {
  res.render('register',{})      
 })
 
-// log in page
-// shows: user login and logout field 
-app.get('/login', (req, res) => {
- res.render('login',{})      
-})
-
 // user page
 // shows: your username, users in group, the user you got assigned too
 
 app.get('/list', (req, res) => {
- res.render('list',{})      
+ 	var user = req.session.user;
+	if (user === undefined) {
+		res.redirect('/?message=' + encodeURIComponent("Please log in to view your profile."));
+	} else {
+		res.render('list', {
+			user: user
+		});
+	}
 })
 
 // ------------ posts --------- //
 
 app.post('/register', (req,res) => {
 	console.log(req.body)
+	let list = [req.body.list1,req.body.list2,req.body.list3,req.body.list4,req.body.list5]
+	console.log(list)
 	Groups.findOne({where: {name: req.body.group}, raw: true}).then( (group => {
 		if(!group) {
 			// create new entry in database
@@ -87,7 +103,7 @@ app.post('/register', (req,res) => {
 				newGroup.createUser({
 					username: req.body.username,
 					password: req.body.password,
-					list: []
+					list: list
 				})
 			})
 
@@ -97,7 +113,7 @@ app.post('/register', (req,res) => {
 			Users.create({
 				username: req.body.username,
 				password: req.body.password,
-				list: [],
+				list: list,
 				groupId: group.id
 			})
 		}
@@ -105,39 +121,78 @@ app.post('/register', (req,res) => {
 );
 });
 
-// test
+// login route
+// req.session.user = user;
+// res.redirect('/?message=' + encodeURIComponent("Please fill out your email address."));
+		
+app.post('/login', (req,res) => {
+	let username = req.body.username 
+	let password = req.body.password
 
-//sequelize.sync({force: true})
+	if(username !== undefined && password !== undefined) {
+	Users.findOne({
+		where: {
+			username: username
+		},
+		raw: true
+	}).then(function (user) {
+		if(password === user.password){
+			req.session.user = user
+			res.redirect('/')
+		}
+		
+	})
+	}
 
-//sequelize.sync().then(() => {
+})
 
-	
-//Groups.findOne({where: {name: 'bssa'}, raw: true})
-//.then((group) => {
-//     console.log(group)
-//     if(!group) {
-//	Groups.create({ 
-//		name: "bssa",
-//		max: "14"
-//	})
-//	.then((newGroup) => { 
-//		newGroup.createUser({
-//			username: 'birds are chirpy',
-//    			password: 'chirp chirp',
-//			list: ['candy','chocolate']
-//		})
-//	})
-//     } else {
-//	Users.create({
-//		username: 'birds are chirpy',
-//		password: 'chirp chirp',
-//		list: ['candy','chocolate'],	
-//		groupId: group.id
-//	})
-//     }
-//})
 
-//});
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+app.post('/login', (req,res) => {
+	if(req.body.username.length === 0) {
+		res.redirect('/?message=' + encodeURIComponent("Please fill out your email address."));
+		return;
+	}
+
+	if(req.body.password.length === 0) {
+		res.redirect('/?message=' + encodeURIComponent("Please fill out your password."));
+		return;
+	}
+
+	Users.findOne({
+		where: {
+			username: req.body.username
+		}
+	}).then(function (user) {
+		if (user !== null && req.body.password === user.password) {
+			req.session.user = user;
+			res.redirect('/list');
+		} else {
+			res.redirect('/?message=' + encodeURIComponent("Invalid email or password."));
+		}
+	}, function (error) {
+		res.redirect('/?message=' + encodeURIComponent("Invalid email or password."));
+	});
+
+})
+*/
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
