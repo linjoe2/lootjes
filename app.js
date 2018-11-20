@@ -46,7 +46,7 @@ Users.belongsTo(Users);
 Groups.hasMany(Users)
 Users.belongsTo(Groups)
 
-// makes it recreate the tables every restart
+// makes it recreate the tables every restart(if set to true)
 
 sequelize.sync({force: false});
 
@@ -78,13 +78,21 @@ app.get('/register', (req, res) => {
 
 app.get('/list', (req, res) => {
  	var user = req.session.user;
-	if (user === undefined) {
-		res.redirect('/?message=' + encodeURIComponent("Please log in to view your profile."));
-	} else {
-		res.render('list', {
-			user: user
-		});
+	if(!user) {
+		res.redirect('/')
+		return
 	}
+	console.log('not running')
+
+	Users.findAll({ where: { groupId : user.groupId}, raw: true}).then(users => {
+		res.render('list', {		
+		user: user,
+		users: users
+		});
+	console.log(users)	
+	})
+		
+	
 })
 
 // ------------ posts --------- //
@@ -92,39 +100,40 @@ app.get('/list', (req, res) => {
 app.post('/register', (req,res) => {
 	console.log(req.body)
 	let list = [req.body.list1,req.body.list2,req.body.list3,req.body.list4,req.body.list5]
-	console.log(list)
-	Groups.findOne({where: {name: req.body.group}, raw: true}).then( (group => {
-		if(!group) {
+	console.log(list)	
+
 			// create new entry in database
-			Groups.create({
+			Groups.findOrCreate({where: {
 				name: req.body.group,
 				max: 14
-			}).then( (newGroup) => {
-				newGroup.createUser({
-					username: req.body.username,
-					password: req.body.password,
-					list: list
-				})
-			})
-
-		} else {
-			// add group to user
-			console.log(group)
-			Users.create({
+			}}).spread((group, created) => {
+				console.log('group')    
+				console.log(group)
+				group.createUser({
 				username: req.body.username,
 				password: req.body.password,
 				list: list,
 				groupId: group.id
+				}).then((user) => {
+					req.session.user = user.dataValues
+					res.redirect('/')
+				})
 			})
-		}
-	})
-);
-});
+})
+
+
+/*
+.then(user => {
+	req.session.user = used.dataValues
+	res.redirect('/')
+			})
+
+
 
 // login route
 // req.session.user = user;
 // res.redirect('/?message=' + encodeURIComponent("Please fill out your email address."));
-		
+*/	
 app.post('/login', (req,res) => {
 	let username = req.body.username 
 	let password = req.body.password
@@ -134,7 +143,8 @@ app.post('/login', (req,res) => {
 		where: {
 			username: username
 		},
-		raw: true
+		raw: true,
+		include: [Groups]
 	}).then(function (user) {
 		if(password === user.password){
 			req.session.user = user
@@ -146,53 +156,51 @@ app.post('/login', (req,res) => {
 
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// generate user link
 /*
-app.post('/login', (req,res) => {
-	if(req.body.username.length === 0) {
-		res.redirect('/?message=' + encodeURIComponent("Please fill out your email address."));
-		return;
+get users
+if users.length > group max
+for loop
+math.floor(math.random*group.max)
+*/
+app.post('/randomizer', (req,res) => {
+	let user = req.session.user
+	console.log(user['group.max'])
+	let taken = []
+
+	function randomizer() {
+			let random = Math.floor(Math.random()) 
+			while(taken.indexOf(random) !== -1) {
+				random = Math.floor(Math.random())
+			 }
+			 if(taken.indexOf(random) == -1) {
+				taken.push(random)
+				return random
+			}	 	
 	}
 
-	if(req.body.password.length === 0) {
-		res.redirect('/?message=' + encodeURIComponent("Please fill out your password."));
-		return;
-	}
-
-	Users.findOne({
-		where: {
-			username: req.body.username
+	Users.findAll({where: {groupId: user.groupId }, raw: true}).then( users => {
+		if(users.length <= user['group.max']) {
+		for(i=0;i < users.length; i++) {
+			
+		
 		}
-	}).then(function (user) {
-		if (user !== null && req.body.password === user.password) {
-			req.session.user = user;
-			res.redirect('/list');
 		} else {
-			res.redirect('/?message=' + encodeURIComponent("Invalid email or password."));
+			res.send('sorry, user amount not reached yet')
 		}
-	}, function (error) {
-		res.redirect('/?message=' + encodeURIComponent("Invalid email or password."));
-	});
+	})
 
 })
+
+/*
+if(!user) {
+		res.redirect('/?message=' + encodeURIComponent("Please log in to view your profile."));
+		return;
+	}
 */
+
+
+
+
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
