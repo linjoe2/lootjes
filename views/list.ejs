@@ -14,6 +14,15 @@
 <h3><%= users[i].username %></h3>
 <% } %>
 
+<% if(chosen) { %>
+<h2> you got assigned to: <%=chosen.username %> </h2>
+<p>his list contains:</p>
+<% for(var i=0; i < chosen.list.length;i++) { %>
+<p><%= chosen.list[i] %>
+<% } %>
+<% } %>
+
+
 
 <input type='button' name='button' id='button' value='generate names'></input>
 

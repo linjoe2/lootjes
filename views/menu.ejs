@@ -1,7 +1,11 @@
 <nav>
  <ul>
 	<li><a href='/'>Home</a></li>
+	<% if(!user) { %>
 	<li><a href='/register'>Register</a></li>
+	<% } if(user) { %>
+	<li><a href='/logout'>Log out</a></li>
+	<% } %>
 	<li><a href='/list'>List</a></li>
 </ul>
 </nav>

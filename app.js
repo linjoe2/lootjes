@@ -70,7 +70,7 @@ app.get('/', (req, res) => {
 // shows: register form: username,password,list and group
 
 app.get('/register', (req, res) => {
- res.render('register',{})      
+ res.render('register',{user: ''})      
 })
 
 // user page
@@ -79,21 +79,29 @@ app.get('/register', (req, res) => {
 app.get('/list', (req, res) => {
  	var user = req.session.user;
 	if(!user) {
-		res.redirect('/')
-		return
+		res.redirect('/?message=' + encodeURIComponent("Please log in to view your profile."));
+		return;
 	}
-	console.log('not running')
 
 	Users.findAll({ where: { groupId : user.groupId}, raw: true}).then(users => {
+		let chosen
+		for(i=0; i < users.length; i++){
+			if(users[i].id === user.userId) {
+				chosen = users[i]	
+			}
+		}
+		
 		res.render('list', {		
 		user: user,
-		users: users
-		});
-	console.log(users)	
+		users: users,
+		chosen: chosen
+		});	
 	})
 		
 	
 })
+
+
 
 // ------------ posts --------- //
 
@@ -122,18 +130,10 @@ app.post('/register', (req,res) => {
 })
 
 
-/*
-.then(user => {
-	req.session.user = used.dataValues
-	res.redirect('/')
-			})
-
-
-
 // login route
 // req.session.user = user;
 // res.redirect('/?message=' + encodeURIComponent("Please fill out your email address."));
-*/	
+	
 app.post('/login', (req,res) => {
 	let username = req.body.username 
 	let password = req.body.password
@@ -148,14 +148,24 @@ app.post('/login', (req,res) => {
 	}).then(function (user) {
 		if(password === user.password){
 			req.session.user = user
-			res.redirect('/')
+			res.redirect('/list')
+		} else {
+			res.redirect('/?message=' + encodeURIComponent("Sorry, password is incorrect"));
+
 		}
 		
+	}).catch(function(err) {
+		console.log(err)
+		res.redirect('/?message=' + encodeURIComponent("Sorry, username is incorrect"));	
 	})
 	}
 
 })
 
+app.get('/logout', (req,res) => {
+	req.session.destroy()
+	res.redirect('/')
+})
 // generate user link
 /*
 get users
@@ -166,41 +176,40 @@ math.floor(math.random*group.max)
 app.post('/randomizer', (req,res) => {
 	let user = req.session.user
 	console.log(user['group.max'])
+	let needed = []
 	let taken = []
-
-	function randomizer() {
-			let random = Math.floor(Math.random()) 
-			while(taken.indexOf(random) !== -1) {
-				random = Math.floor(Math.random())
+	if (!!user.userId) {
+		res.send('already generated')
+		return;
+	}
+	
+	function randomizer(id) {
+			let random = Math.floor(Math.random()*needed.length)
+			while(taken.indexOf(random) !== -1 && needed[random] !== id ) {
+				random = Math.floor(Math.random()*needed.length)
 			 }
-			 if(taken.indexOf(random) == -1) {
+			 if(taken.indexOf(random) == -1 && needed[random] !== id) {
 				taken.push(random)
-				return random
+				return needed[random]
 			}	 	
 	}
-
-	Users.findAll({where: {groupId: user.groupId }, raw: true}).then( users => {
+	Users.findAll({where: {groupId: user.groupId }}).then( users => {
 		if(users.length <= user['group.max']) {
-		for(i=0;i < users.length; i++) {
+			console.log('length: '+users.length)
+			for(let i=0; i < users.length; i++) {
+				needed.push(users[i].dataValues.id)
+			}	
 			
-		
-		}
+			for(let i=0; i < users.length; i++) {
+				users[i].update({userId: randomizer(users[i].dataValues.id)})
+			}
+			//res.send('Generating is done')
+
 		} else {
 			res.send('sorry, user amount not reached yet')
 		}
 	})
 
 })
-
-/*
-if(!user) {
-		res.redirect('/?message=' + encodeURIComponent("Please log in to view your profile."));
-		return;
-	}
-*/
-
-
-
-
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
