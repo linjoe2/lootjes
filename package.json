@@ -13,6 +13,6 @@
     "express": "^4.16.4",
     "express-session": "^1.15.6",
     "pg": "^7.6.0",
-    "sequelize": "^4.41.1"
+    "sequelize": "^5.15.1"
   }
 }
